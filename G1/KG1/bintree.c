@@ -56,6 +56,7 @@ int size(tnode_t *tree) {
 
 //Dumps values from the tree to an array
 void array_dump(tnode_t *tree, int *array, int *count) {
+    //Return if bottom has been reached
     if(tree == NULL) {
         return;
     }
