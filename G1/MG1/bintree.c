@@ -80,9 +80,9 @@ int *to_array_helper(tnode_t *tree, int *addr) {
         return addr;
 
     addr = to_array_helper(tree->lchild, addr);
-    *addr = tree->data;
+    (*addr)++ = tree->data;
 
-    return to_array_helper(tree->rchild, addr + 1);
+    return to_array_helper(tree->rchild, addr);
 }
 
 int *to_array(tnode_t *tree) {
