@@ -30,18 +30,18 @@ void insert(tnode_t **tree, int value) {
 }
 
 void print_inorder(tnode_t* tree) {
-    //print left part of tree
-    if(tree->lchild != NULL) {
-        print_inorder(tree->lchild);
-    }
+    //Stop when we reach the edge
+    if(tree == NULL)
+        return;
 
-    //print value of current node
+    //Print left part of tree
+    print_inorder(tree->lchild);
+
+    //Print value of current node
     printf("%d ", tree->data);
 
-    //print right part of tree
-    if(tree->rchild != NULL) {
-        print_inorder(tree->rchild);
-    }
+    //Print right part of tree
+    print_inorder(tree->rchild);
 }
 
 int size(tnode_t *tree) {
@@ -65,8 +65,8 @@ void array_dump(tnode_t *tree, int *array, int *count) {
     array_dump(tree->lchild, array, count);
 
     //Write to array
-    array[*count] = tree->data;
-    (*count)++;
+    array[(*count)++] = tree->data;
+
 
     //Right side of tree
     array_dump(tree->rchild, array, count);
@@ -74,8 +74,7 @@ void array_dump(tnode_t *tree, int *array, int *count) {
 
 int* to_array(tnode_t *tree) {
     //Allocate memory for the array
-    int length = size(tree);
-    int *array = malloc(sizeof(int)*length);
+    int *array = malloc(sizeof(int)*size(tree));
     int count = 0;
     if(array == NULL) {
         printf("malloc failed");
