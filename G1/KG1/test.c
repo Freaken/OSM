@@ -60,9 +60,8 @@ int main() {
     insert(&tree, 2);
 
     print_node(tree);
-    printf("The inorder walk for the tree is: \n");
+    printf("The inorder walk for the tree is: ");
     print_inorder(tree);
-    printf("\n");
     printf("The size of the tree is %d\n", size(tree));
 
     // Tests for opgave 2
