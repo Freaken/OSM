@@ -1,5 +1,27 @@
 \section{Binære søgetræer}
+
 \subsection{\tt insert}
+
+Den generelle idé er: søg træet igennem, find det første sted du møder
+{\tt NULL}, indsæt den nye værdi. Vi har internt i gruppen dog implementeret
+denne idé på flere måde - de mest oplagte er at søge træet igennem med et
+{\tt while}-loop eller ved hjælp af rekursion. Vi har i den afleverede opgave
+brugt rekursion.
+
 \subsection{\tt print\_inorder}
+
+Den generelle idé her at man rekusivt først printer venstre del-træ,
+så printer elementet, derefter printer det højre deltræ. For at få udskrevet et
+linjeskift har vi pakket dette ind i en hjælpe-funktion.
+
 \subsection{\tt size}
+
+Opgaven er triviel, hvis man observerer at størrelsen af træet er 0 for et
+tomt træ, mens den er 1 + størrelsen af hver af børnene for ikke-tomme
+træer.
+
 \subsection{\tt to\_array}
+
+Opgaven løses ved at først allokere plads til array ved at bruge {\tt malloc} og
+{\tt size}. Derefter udfyldes arrayet ved at gå rekursivt igennem træet. Den
+aktuelle position holder vi styr på ved hjælp af en pege-peger.
