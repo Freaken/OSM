@@ -10,7 +10,7 @@ dlist_t *list_insert(dlist_t *prev, int data) {
     
     if(cur == NULL) {
         printf("malloc failed");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     /* Inserts data */

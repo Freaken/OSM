@@ -9,7 +9,7 @@ void insert(tnode_t **tree, int value) {
         *tree = malloc(sizeof(tnode_t));
         if(*tree == NULL) {
             printf("malloc failed\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
 
         //Initialize node
@@ -83,7 +83,7 @@ int* to_array(tnode_t *tree) {
     arraypos = retval = malloc(sizeof(int)*size(tree));
     if(retval == NULL) {
         printf("malloc failed");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     //Write to the array
     array_dump(tree, &arraypos);
@@ -98,7 +98,7 @@ void insert2(tnode_t2 **tree, void *data, int (*comp)(void *, void *)) {
         *tree = malloc(sizeof(tnode_t2));
         if(*tree == NULL) {
             printf("malloc failed\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
 
         //Initialize node
