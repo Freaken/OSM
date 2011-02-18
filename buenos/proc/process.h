@@ -37,9 +37,45 @@
 #ifndef BUENOS_PROC_PROCESS
 #define BUENOS_PROC_PROCESS
 
+#include "kernel/config.h"
+
+/* Not a legal process id */
+#define PROCESS_ERROR_ILLEGAL_PID -1
+
+/* There was no process with that pid running */
+#define PROCESS_ERROR_NOT_RUNNING  -2
+
+/* Illegal process name */
+#define PROCESS_ERROR_ILLEGAL_PROCESS_NAME -3
+
+/* process ID data type (index in the process table) */
 typedef int process_id_t;
 
+typedef enum  {
+    PROCESS_FREE,
+    PROCESS_ZOMBIE,
+    PROCESS_ALIVE
+} process_state_t;
+
+typedef struct {
+    /* process name */
+    char process_name[CONFIG_MAX_PROCESS_NAME];
+
+    /* process state */
+    process_state_t process_state;
+
+    /* return value */
+    int retval;
+
+} process_table_t;
+
+void process_table_init(void);
 void process_start(const char *executable);
+process_id_t process_spawn(const char *executable);
+void process_finish(int retval);
+process_id_t process_get_current_process(void);
+process_table_t *process_get_current_process_entry(void);
+int process_join(process_id_t pid);
 
 #define USERLAND_STACK_TOP 0x7fffeffc
 

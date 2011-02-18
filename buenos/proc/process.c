@@ -36,6 +36,7 @@
 
 #include "proc/process.h"
 #include "proc/elf.h"
+#include "kernel/spinlock.h"
 #include "kernel/thread.h"
 #include "kernel/assert.h"
 #include "kernel/interrupt.h"
@@ -44,12 +45,23 @@
 #include "drivers/yams.h"
 #include "vm/vm.h"
 #include "vm/pagepool.h"
+#include "lib/libc.h"
 
 
 /** @name Process startup
  *
  * This module contains a function to start a userland process.
  */
+
+/** Spinlock which must be hold when manipulating the process table */
+spinlock_t process_table_slock;
+
+/** The table containing all processes in the system, whether active or not. */
+process_table_t process_table[CONFIG_MAX_PROCESSES];
+
+void process_table_init(void) {
+    /* TODO: Init table + semaphore */
+}
 
 /**
  * Starts one userland process. The thread calling this function will
@@ -103,7 +115,7 @@ void process_start(const char *executable)
        (including userland stack). Since we don't have proper tlb
        handling code, all these pages must fit into TLB. */
     KERNEL_ASSERT(elf.ro_pages + elf.rw_pages + CONFIG_USERLAND_STACK_SIZE
-		  <= _tlb_get_maxindex() + 1);
+                  <= _tlb_get_maxindex() + 1);
 
     /* Allocate and map stack */
     for(i = 0; i < CONFIG_USERLAND_STACK_SIZE; i++) {
@@ -150,19 +162,19 @@ void process_start(const char *executable)
     /* Copy segments */
 
     if (elf.ro_size > 0) {
-	/* Make sure that the segment is in proper place. */
+        /* Make sure that the segment is in proper place. */
         KERNEL_ASSERT(elf.ro_vaddr >= PAGE_SIZE);
         KERNEL_ASSERT(vfs_seek(file, elf.ro_location) == VFS_OK);
         KERNEL_ASSERT(vfs_read(file, (void *)elf.ro_vaddr, elf.ro_size)
-		      == (int)elf.ro_size);
+                      == (int)elf.ro_size);
     }
 
     if (elf.rw_size > 0) {
-	/* Make sure that the segment is in proper place. */
+        /* Make sure that the segment is in proper place. */
         KERNEL_ASSERT(elf.rw_vaddr >= PAGE_SIZE);
         KERNEL_ASSERT(vfs_seek(file, elf.rw_location) == VFS_OK);
         KERNEL_ASSERT(vfs_read(file, (void *)elf.rw_vaddr, elf.rw_size)
-		      == (int)elf.rw_size);
+                      == (int)elf.rw_size);
     }
 
 
@@ -185,6 +197,99 @@ void process_start(const char *executable)
     thread_goto_userland(&user_context);
 
     KERNEL_PANIC("thread_goto_userland failed.");
+}
+
+process_id_t process_spawn(const char *executable) {
+    process_id_t process_id;
+    process_table_t *process;
+    TID_t spawned_thread;
+    interrupt_status_t intr_status;
+
+    if(strlen(executable) >= CONFIG_MAX_PROCESS_NAME)
+        return PROCESS_ERROR_ILLEGAL_PROCESS_NAME;
+    
+    intr_status = _interrupt_disable();
+    spinlock_acquire(&process_table_slock);
+
+
+    process_id = 17; /* TODO: get the process id a smarter way */
+    process = &(process_table[process_id]);
+
+    stringcopy(process->process_name, executable, CONFIG_MAX_PROCESS_NAME);
+    process->process_state = PROCESS_ALIVE;
+
+    spawned_thread = thread_create((void (*)(uint32_t)) &process_start, (uint32_t) (process->process_name));
+    /* TODO: Set spawned threads process_id */
+    thread_run(spawned_thread);
+
+    spinlock_release(&process_table_slock);
+    _interrupt_set_state(intr_status);
+
+    return process_id;
+}
+
+void process_finish(int retval) {
+    process_table_t *process;
+    interrupt_status_t intr_status;
+
+    intr_status = _interrupt_disable();
+    spinlock_acquire(&process_table_slock);
+
+    process = process_get_current_process_entry();
+
+    if(process->process_state == PROCESS_ALIVE) {
+        process->retval = retval;
+        process->process_state = PROCESS_ZOMBIE;
+        /* TODO: wake_all */
+        /* TODO: free page tables */
+        /* TODO: kill thread too */
+    }
+
+    spinlock_release(&process_table_slock);
+    _interrupt_set_state(intr_status);
+
+}
+
+process_id_t process_get_current_process(void) {
+    return thread_get_current_thread_entry()->process_id;
+}
+
+process_table_t *process_get_current_process_entry(void) {
+    return &process_table[process_get_current_process()];
+}
+
+int process_join(process_id_t pid) {
+    process_table_t *process;
+    interrupt_status_t intr_status;
+    int retval;
+
+    if(pid <= 0 || pid >= CONFIG_MAX_PROCESSES)
+        return PROCESS_ERROR_ILLEGAL_PID;
+
+    intr_status = _interrupt_disable();
+    spinlock_acquire(&process_table_slock);
+
+    process = &process_table[pid];
+
+    if(process->process_state == PROCESS_FREE) {
+        spinlock_release(&process_table_slock);
+        _interrupt_set_state(intr_status);
+        return PROCESS_ERROR_NOT_RUNNING;
+    }
+
+    if(process->process_state == PROCESS_ALIVE) {
+        /* TODO: wait for exit */
+    }
+
+    retval = process->retval;
+
+    process->process_state = PROCESS_FREE;
+
+    spinlock_release(&process_table_slock);
+    _interrupt_set_state(intr_status);
+
+    return retval;
+
 }
 
 /** @} */
