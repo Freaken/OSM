@@ -91,6 +91,9 @@
 
 #define CONFIG_MAX_OPEN_FILES 512
 
+/* Define maximum number of open files per process */
+#define CONFIG_MAX_FILEHANDLES 256
+
 /* Maximum number of simultaneously open sockets for POP/SOP 
  * Range from 4 to 65536
  */
