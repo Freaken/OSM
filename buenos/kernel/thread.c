@@ -323,4 +323,18 @@ void thread_finish(void)
     KERNEL_PANIC("thread_finish(): thread was not destroyed");
 }
 
+/** Sets the process-id of a thread */
+void thread_set_process_id(TID_t tid, process_id_t process_id) {
+
+    interrupt_status_t intr_status;
+
+    intr_status = _interrupt_disable();
+    spinlock_acquire(&thread_table_slock);
+
+    thread_table[tid].process_id = process_id;
+
+    spinlock_release(&thread_table_slock);
+    _interrupt_set_state(intr_status);
+}
+
 /** @} */
