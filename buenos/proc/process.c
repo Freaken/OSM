@@ -36,6 +36,7 @@
 
 #include "proc/process.h"
 #include "proc/elf.h"
+#include "proc/syscall.h"
 #include "kernel/spinlock.h"
 #include "kernel/thread.h"
 #include "kernel/assert.h"
@@ -59,8 +60,36 @@ spinlock_t process_table_slock;
 /** The table containing all processes in the system, whether active or not. */
 process_table_t process_table[CONFIG_MAX_PROCESSES];
 
-void process_table_init(void) {
-    /* TODO: Init table + semaphore */
+gcd_t file_stdin, file_stdout, file_stderr;
+
+void process_init(void) {
+    device_t *dev;
+    gcd_t *gcd;
+    int n;
+
+    /* Find system console (first tty) */
+    dev = device_get(YAMS_TYPECODE_TTY, 0);
+    KERNEL_ASSERT(dev != NULL);
+
+
+    gcd = (gcd_t *)dev->generic_device;
+    KERNEL_ASSERT(gcd != NULL);
+
+    memcopy(sizeof(gcd_t), &file_stdin, gcd);
+    memcopy(sizeof(gcd_t), &file_stdout, gcd);
+    memcopy(sizeof(gcd_t), &file_stderr, gcd);
+
+    file_stdin.write = NULL;
+    file_stdout.read = NULL;
+    file_stderr.read = NULL;
+
+    /* Initializes spinlock */
+    spinlock_reset(&process_table_slock);
+
+    for(n = 0; n < CONFIG_MAX_PROCESSES; n++)
+        process_table[n].state = PROCESS_FREE;
+
+    /* TODO: Create an idle-process containing the already-existing idle-thread. */
 }
 
 /**
@@ -206,7 +235,7 @@ process_id_t process_spawn(const char *executable) {
     interrupt_status_t intr_status;
 
     if(strlen(executable) >= CONFIG_MAX_PROCESS_NAME)
-        return PROCESS_ERROR_ILLEGAL_PROCESS_NAME;
+        return SYSCALL_ILLEGAL_ARGUMENT;
     
     intr_status = _interrupt_disable();
     spinlock_acquire(&process_table_slock);
@@ -215,11 +244,17 @@ process_id_t process_spawn(const char *executable) {
     process_id = 17; /* TODO: get the process id a smarter way */
     process = &(process_table[process_id]);
 
+    /* Initializes open files */
+    memoryset(process->files, 0, sizeof(process->files));
+    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDIN], &file_stdin); 
+    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDOUT], &file_stdout); 
+    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDERR], &file_stderr); 
+
     stringcopy(process->process_name, executable, CONFIG_MAX_PROCESS_NAME);
-    process->process_state = PROCESS_ALIVE;
+    process->state = PROCESS_ALIVE;
 
     spawned_thread = thread_create((void (*)(uint32_t)) &process_start, (uint32_t) (process->process_name));
-    /* TODO: Set spawned threads process_id */
+    thread_set_process_id(spawned_thread, process_id);
     thread_run(spawned_thread);
 
     spinlock_release(&process_table_slock);
@@ -237,9 +272,9 @@ void process_finish(int retval) {
 
     process = process_get_current_process_entry();
 
-    if(process->process_state == PROCESS_ALIVE) {
+    if(process->state == PROCESS_ALIVE) {
         process->retval = retval;
-        process->process_state = PROCESS_ZOMBIE;
+        process->state = PROCESS_ZOMBIE;
         /* TODO: wake_all */
         /* TODO: free page tables */
         /* TODO: kill thread too */
@@ -264,26 +299,26 @@ int process_join(process_id_t pid) {
     int retval;
 
     if(pid <= 0 || pid >= CONFIG_MAX_PROCESSES)
-        return PROCESS_ERROR_ILLEGAL_PID;
+        return SYSCALL_ILLEGAL_ARGUMENT;
 
     intr_status = _interrupt_disable();
     spinlock_acquire(&process_table_slock);
 
     process = &process_table[pid];
 
-    if(process->process_state == PROCESS_FREE) {
+    if(process->state == PROCESS_FREE) {
         spinlock_release(&process_table_slock);
         _interrupt_set_state(intr_status);
-        return PROCESS_ERROR_NOT_RUNNING;
+        return SYSCALL_NOT_RUNNING;
     }
 
-    if(process->process_state == PROCESS_ALIVE) {
+    if(process->state == PROCESS_ALIVE) {
         /* TODO: wait for exit */
     }
 
     retval = process->retval;
 
-    process->process_state = PROCESS_FREE;
+    process->state = PROCESS_FREE;
 
     spinlock_release(&process_table_slock);
     _interrupt_set_state(intr_status);
