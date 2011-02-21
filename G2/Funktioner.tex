@@ -1,1 +1,33 @@
 \section{Hjælpefunktioner}
+Generelt for alle vores hjælpefunktioner er, at de alle sammen sørger for at
+have spinlock'en før de ændrer på process-tabellen, samt at have den før de
+læser noget der har indflydelse for de ændringer de senere vil lave.
+
+Den største undtagelse for dette er {\tt process\_get\_current\_process\_entry}
+og med denne antages det at man selvhusker at lade være med at ændre
+entryen uden at have spinlocken.
+
+\begin{itemize}
+\item {\tt process\_init} initaliserer process-tabellen, devicesn for {\tt
+stdin}, {\tt stdout} og {\tt stderr}, samt initialiserer idle-processen.
+
+\item {\tt process\_spawn} starter en ny process i en anden tråd og kalder
+herefter {\tt process\_start} for at loade en fil til at blive kørt i denne
+tråd. Den sørger også for at sætte de relevante felter i den tilhørende {\tt
+process\_table\_t} og {\tt thread\_table\_tid}.
+
+\item {\tt process\_finish} sætter en process til ``zombie''-tilstand, dræber
+dens tråd, frigiver dens resourcer og vækker eventuelle andre processer der
+venter på at processen bliver færdig.
+
+\item {\tt process\_get\_current\_process} og {\tt
+process\_get\_current\_process\_entry} er meget simple funktioner som mere eller
+mindre gør hvad de siger: får fat i henholdsvis det aktuelle process-id eller
+rækken i {\tt process\_table} som hører til den aktuelle process.
+
+\item {\tt process\_join} venter på at en process bliver færdig og afslutter den
+derefter helt, så den ikke længere er en ``zombie''. Herefter returnerer
+funktionen returværdien for processen.
+
+\item {\tt thread\_set\_process\_id} sætter process-id'et for en tråd.
+\end{itemize}
