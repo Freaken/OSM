@@ -318,13 +318,16 @@ void process_finish(int retval) {
         process->retval = retval;
         process->state = PROCESS_ZOMBIE;
 
-        /* Kills thread */
+        /* Frees resources */
         vm_destroy_pagetable(thread->pagetable);
         thread->pagetable = NULL;
-        thread_finish();
 
-        /* Wake up processes waiting to join */
+        /* Wakes processes trying to join */
         sleepq_wake_all(process);
+
+        /* Kills thread (and does not return) */
+        spinlock_release(&process_table_slock);
+        thread_finish();
     }
 
     spinlock_release(&process_table_slock);
