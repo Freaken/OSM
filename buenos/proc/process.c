@@ -95,7 +95,18 @@ void process_init(void) {
     for(n = 0; n < CONFIG_MAX_PROCESSES; n++)
         process_table[n].state = PROCESS_FREE;
 
-    /* TODO: Create an idle-process containing the already-existing idle-thread. */
+    /* Initializes idle thread */
+    process_table_t *idle_process = &process_table[IDLE_PROCESS_PID];
+
+    /* Initializes open files */
+    memoryset(idle_process->files, 0, sizeof(idle_process->files));
+    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDIN], &file_stdin); 
+    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDOUT], &file_stdout); 
+    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDERR], &file_stderr); 
+
+    /* Sets process name and state */
+    stringcopy(idle_process->process_name, "idle", CONFIG_MAX_PROCESS_NAME);
+    idle_process->state = PROCESS_ALIVE;
 }
 
 /**

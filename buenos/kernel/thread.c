@@ -103,6 +103,7 @@ void thread_table_init(void)
     thread_table[IDLE_THREAD_TID].context->status = 
         INTERRUPT_MASK_ALL | INTERRUPT_MASK_MASTER;
     thread_table[IDLE_THREAD_TID].state = THREAD_READY;
+    thread_table[IDLE_THREAD_TID].process_id = IDLE_PROCESS_PID;
     thread_table[IDLE_THREAD_TID].context->prev_context =
         thread_table[IDLE_THREAD_TID].context;
 }

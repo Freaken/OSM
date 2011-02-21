@@ -72,6 +72,8 @@ process_id_t process_get_current_process(void);
 process_table_t *process_get_current_process_entry(void);
 int process_join(process_id_t pid);
 
+#define IDLE_PROCESS_PID 0
+
 #define USERLAND_STACK_TOP 0x7fffeffc
 
 #endif
