@@ -62,6 +62,10 @@ process_table_t process_table[CONFIG_MAX_PROCESSES];
 
 gcd_t file_stdin, file_stdout, file_stderr;
 
+/**
+ * Initializes the process table, the process table spinlock,
+ * sets up stdin, stdout and stderr and finally sets of the idle process
+ */
 void process_init(void) {
     device_t *dev;
     gcd_t *gcd;
@@ -70,7 +74,6 @@ void process_init(void) {
     /* Find system console (first tty) */
     dev = device_get(YAMS_TYPECODE_TTY, 0);
     KERNEL_ASSERT(dev != NULL);
-
 
     gcd = (gcd_t *)dev->generic_device;
     KERNEL_ASSERT(gcd != NULL);
@@ -86,6 +89,7 @@ void process_init(void) {
     /* Initializes spinlock */
     spinlock_reset(&process_table_slock);
 
+    /* Sets all processes to free */
     for(n = 0; n < CONFIG_MAX_PROCESSES; n++)
         process_table[n].state = PROCESS_FREE;
 
@@ -228,6 +232,9 @@ void process_start(const char *executable)
     KERNEL_PANIC("thread_goto_userland failed.");
 }
 
+/**
+ * Spawns a new thread in which it loads a new executable from disk.
+ */
 process_id_t process_spawn(const char *executable) {
     process_id_t process_id;
     process_table_t *process;
@@ -236,10 +243,10 @@ process_id_t process_spawn(const char *executable) {
 
     if(strlen(executable) >= CONFIG_MAX_PROCESS_NAME)
         return SYSCALL_ILLEGAL_ARGUMENT;
-    
+
+    /* Acquires spinlock to change process table */
     intr_status = _interrupt_disable();
     spinlock_acquire(&process_table_slock);
-
 
     process_id = 17; /* TODO: get the process id a smarter way */
     process = &(process_table[process_id]);
@@ -250,23 +257,31 @@ process_id_t process_spawn(const char *executable) {
     memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDOUT], &file_stdout); 
     memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDERR], &file_stderr); 
 
+    /* Sets process name and state */
     stringcopy(process->process_name, executable, CONFIG_MAX_PROCESS_NAME);
     process->state = PROCESS_ALIVE;
 
+    /* Spawns the a new thread for the process */
     spawned_thread = thread_create((void (*)(uint32_t)) &process_start, (uint32_t) (process->process_name));
     thread_set_process_id(spawned_thread, process_id);
     thread_run(spawned_thread);
 
+    /* Releases lock */
     spinlock_release(&process_table_slock);
     _interrupt_set_state(intr_status);
 
     return process_id;
 }
 
+/**
+ * Frees a process' resources, kills its thread and sets it to a zombie-state,
+ * so it can be finished by its parent.
+ */
 void process_finish(int retval) {
     process_table_t *process;
     interrupt_status_t intr_status;
 
+    /* Acquire the lock */
     intr_status = _interrupt_disable();
     spinlock_acquire(&process_table_slock);
 
@@ -275,9 +290,9 @@ void process_finish(int retval) {
     if(process->state == PROCESS_ALIVE) {
         process->retval = retval;
         process->state = PROCESS_ZOMBIE;
-        /* TODO: wake_all */
         /* TODO: free page tables */
-        /* TODO: kill thread too */
+        /* TODO: kill thread */
+        /* TODO: wake_all waiting to join */
     }
 
     spinlock_release(&process_table_slock);
@@ -285,14 +300,25 @@ void process_finish(int retval) {
 
 }
 
+/**
+ * Gets the current process id, by looking at the id from the currently running thread.
+ */
 process_id_t process_get_current_process(void) {
     return thread_get_current_thread_entry()->process_id;
 }
 
+/**
+ * Gets the current row in the process table associated with the currently running thread,
+ * by using process_get_current_process.
+ */
 process_table_t *process_get_current_process_entry(void) {
     return &process_table[process_get_current_process()];
 }
 
+/**
+ * Waits for a given process to finish, then cleans up after it and
+ * returns the process exitcode.
+ */
 int process_join(process_id_t pid) {
     process_table_t *process;
     interrupt_status_t intr_status;
@@ -301,25 +327,29 @@ int process_join(process_id_t pid) {
     if(pid <= 0 || pid >= CONFIG_MAX_PROCESSES)
         return SYSCALL_ILLEGAL_ARGUMENT;
 
+    /* Acquires lock to change the process table */
     intr_status = _interrupt_disable();
     spinlock_acquire(&process_table_slock);
 
     process = &process_table[pid];
 
+    /* Called join on a non-existant process */
     if(process->state == PROCESS_FREE) {
         spinlock_release(&process_table_slock);
         _interrupt_set_state(intr_status);
         return SYSCALL_NOT_RUNNING;
     }
 
+    /* If it is still runnig, wait for it to exit */
     if(process->state == PROCESS_ALIVE) {
         /* TODO: wait for exit */
     }
 
+    /* Finishes up the process */
     retval = process->retval;
-
     process->state = PROCESS_FREE;
 
+    /* Releases the lock */
     spinlock_release(&process_table_slock);
     _interrupt_set_state(intr_status);
 
