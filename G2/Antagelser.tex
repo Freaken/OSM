@@ -1,1 +1,17 @@
 \section{Antagelser}
+Vi har i vores implementation antaget at følgende gælder for de brugerprogrammer
+som kan loades. Der burde laves check for dem og returneres fejl, men i stedet
+opfører kernen sig på uønsket/udefineret vis, hvis det alligevel skulle ske:
+
+\begin{itemize}
+\item Pointere samt bufferstørrelser givet til systemkald er gyldige og ligger indenfor
+brugerprocessernes hukommelsesområde. Dette bliver ikke tjekket og kan i værste
+tilfælde udnyttes til en kernel-exploit.
+\item syscall\_join skal kun kaldes af en parent. Da der ellers kan opstå
+race-conditions mellem forskellige processer. Dette er vil ikke give en
+kerne-fejl, men kan føre til problemer i user-space.
+\item syscall\_spawn skal referere til en gyldig fil, som kan eksekveres. Hvis ikke
+dette er tilfældet, laves der en {\tt KERNEL\_PANIC}.
+\end{itemize}
+
+
