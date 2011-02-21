@@ -42,13 +42,20 @@
 #include "proc/syscall.h"
 #include "proc/process.h"
 
+/**
+ * Local helper-function to handle a syscall_write.
+ */
 int _syscall_write(context_t *user_context) {
+    /* Syscall argument */
     int file_handle = user_context->cpu_regs[MIPS_REGISTER_A1];
     char *buffer = (char*) user_context->cpu_regs[MIPS_REGISTER_A2];
     int length = user_context->cpu_regs[MIPS_REGISTER_A3];
+
+    /* Current process and file handle */
     process_table_t *process = process_get_current_process_entry();
     gcd_t *file = &process->files[file_handle];
 
+    /* Sanity checks */
     if(file_handle < 0 || file_handle >= CONFIG_MAX_FILEHANDLES)
         return SYSCALL_ILLEGAL_ARGUMENT;
 
@@ -60,18 +67,26 @@ int _syscall_write(context_t *user_context) {
 
     /* This function _should_ also test if buffer in a legal memory area */
 
+    /* DO IT! */
     length = file->write(file, buffer, length);
 
     return length;
 }
 
+/**
+ * Local helper-function to handle a syscall_read.
+ */
 int _syscall_read(context_t *user_context) {
+    /* Syscall argument */
     int file_handle = user_context->cpu_regs[MIPS_REGISTER_A1];
     char *buffer = (char*) user_context->cpu_regs[MIPS_REGISTER_A2];
     int length = user_context->cpu_regs[MIPS_REGISTER_A3];
+
+    /* Current process and file handle */
     process_table_t *process = process_get_current_process_entry();
     gcd_t *file = &process->files[file_handle];
 
+    /* Sanity checks */
     if(file_handle < 0 || file_handle >= CONFIG_MAX_FILEHANDLES)
         return SYSCALL_ILLEGAL_ARGUMENT;
 
@@ -83,6 +98,7 @@ int _syscall_read(context_t *user_context) {
 
     /* This function _should_ also test if buffer in a legal memory area */
 
+    /* DO IT! */
     length = file->read(file, buffer, length);
 
     return length;
