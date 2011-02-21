@@ -61,6 +61,7 @@ spinlock_t process_table_slock;
 /** The table containing all processes in the system, whether active or not. */
 process_table_t process_table[CONFIG_MAX_PROCESSES];
 
+/** Character devices for stdin, stdout, stderr */
 gcd_t file_stdin, file_stdout, file_stderr;
 
 /**
