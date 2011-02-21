@@ -100,9 +100,9 @@ void process_init(void) {
 
     /* Initializes open files */
     memoryset(idle_process->files, 0, sizeof(idle_process->files));
-    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDIN], &file_stdin); 
-    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDOUT], &file_stdout); 
-    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDERR], &file_stderr); 
+    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDIN], &file_stdin);
+    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDOUT], &file_stdout);
+    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDERR], &file_stderr);
 
     /* Sets process name and state */
     stringcopy(idle_process->process_name, "idle", CONFIG_MAX_PROCESS_NAME);
@@ -167,7 +167,7 @@ void process_start(const char *executable)
     for(i = 0; i < CONFIG_USERLAND_STACK_SIZE; i++) {
         phys_page = pagepool_get_phys_page();
         KERNEL_ASSERT(phys_page != 0);
-        vm_map(my_entry->pagetable, phys_page, 
+        vm_map(my_entry->pagetable, phys_page,
                (USERLAND_STACK_TOP & PAGE_SIZE_MASK) - i*PAGE_SIZE, 1);
     }
 
@@ -177,14 +177,14 @@ void process_start(const char *executable)
     for(i = 0; i < (int)elf.ro_pages; i++) {
         phys_page = pagepool_get_phys_page();
         KERNEL_ASSERT(phys_page != 0);
-        vm_map(my_entry->pagetable, phys_page, 
+        vm_map(my_entry->pagetable, phys_page,
                elf.ro_vaddr + i*PAGE_SIZE, 1);
     }
 
     for(i = 0; i < (int)elf.rw_pages; i++) {
         phys_page = pagepool_get_phys_page();
         KERNEL_ASSERT(phys_page != 0);
-        vm_map(my_entry->pagetable, phys_page, 
+        vm_map(my_entry->pagetable, phys_page,
                elf.rw_vaddr + i*PAGE_SIZE, 1);
     }
 
@@ -194,14 +194,14 @@ void process_start(const char *executable)
     intr_status = _interrupt_disable();
     tlb_fill(my_entry->pagetable);
     _interrupt_set_state(intr_status);
-    
+
     /* Now we may use the virtual addresses of the segments. */
 
     /* Zero the pages. */
     memoryset((void *)elf.ro_vaddr, 0, elf.ro_pages*PAGE_SIZE);
     memoryset((void *)elf.rw_vaddr, 0, elf.rw_pages*PAGE_SIZE);
 
-    stack_bottom = (USERLAND_STACK_TOP & PAGE_SIZE_MASK) - 
+    stack_bottom = (USERLAND_STACK_TOP & PAGE_SIZE_MASK) -
         (CONFIG_USERLAND_STACK_SIZE-1)*PAGE_SIZE;
     memoryset((void *)stack_bottom, 0, CONFIG_USERLAND_STACK_SIZE*PAGE_SIZE);
 
@@ -264,7 +264,7 @@ process_id_t process_spawn(const char *executable) {
 
     /* Find the first free process table entry starting from 'next_process_id' */
     for (i=0; i<CONFIG_MAX_PROCESSES; i++) {
-        process_id_t p = (i + next_process_id) % CONFIG_MAX_PROCESS_NAME;
+        process_id_t p = (i + next_process_id) % CONFIG_MAX_PROCESSES;
 
         if (process_table[p].state == PROCESS_FREE) {
             process_id = p;
@@ -272,13 +272,22 @@ process_id_t process_spawn(const char *executable) {
         }
     }
 
+    /* Is the thread table full? */
+    if (process_id < 0) {
+        spinlock_release(&process_table_slock);
+        _interrupt_set_state(intr_status);
+        return SYSCALL_OPERATION_NOT_POSSIBLE;
+    }
+
+    next_process_id = (process_id + 1) % CONFIG_MAX_PROCESSES;
+
     process = &(process_table[process_id]);
 
     /* Initializes open files */
     memoryset(process->files, 0, sizeof(process->files));
-    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDIN], &file_stdin); 
-    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDOUT], &file_stdout); 
-    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDERR], &file_stderr); 
+    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDIN], &file_stdin);
+    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDOUT], &file_stdout);
+    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDERR], &file_stderr);
 
     /* Sets process name and state */
     stringcopy(process->process_name, executable, CONFIG_MAX_PROCESS_NAME);
