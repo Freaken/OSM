@@ -368,6 +368,9 @@ int process_join(process_id_t pid) {
 
     process = &process_table[pid];
 
+    /* Should do a check to see if currently running process is the parent
+     * of the process we are trying to join with. */
+
     /* Called join on a non-existant process */
     if(process->state == PROCESS_FREE) {
         spinlock_release(&process_table_slock);
