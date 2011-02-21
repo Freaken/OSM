@@ -237,7 +237,8 @@ void process_start(const char *executable)
  * Spawns a new thread in which it loads a new executable from disk.
  */
 process_id_t process_spawn(const char *executable) {
-    process_id_t process_id;
+    static process_id_t next_process_id = 0;
+    process_id_t i, process_id = -1;
     process_table_t *process;
     TID_t spawned_thread;
     interrupt_status_t intr_status;
@@ -249,7 +250,19 @@ process_id_t process_spawn(const char *executable) {
     intr_status = _interrupt_disable();
     spinlock_acquire(&process_table_slock);
 
-    process_id = 17; /* TODO: get the process id a smarter way */
+    /* Find the first free process table entry starting from 'next_process_id' */
+    for (i=0; i<CONFIG_MAX_PROCESSES; i++) {
+        process_id_t p = (i + next_process_id) % CONFIG_MAX_PROCESS_NAME;
+
+        if (process_table[p].state != PROCESS_FREE)
+            continue;
+
+        if (process_table[p].state == PROCESS_FREE) {
+            process_id = p;
+            break;
+        }
+    }
+
     process = &(process_table[process_id]);
 
     /* Initializes open files */
