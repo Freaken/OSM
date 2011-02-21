@@ -1,4 +1,5 @@
 halt
-halt.map
+print
+*.map
 *.o
 

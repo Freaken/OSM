@@ -37,9 +37,40 @@
 #ifndef BUENOS_PROC_PROCESS
 #define BUENOS_PROC_PROCESS
 
+#include "drivers/gcd.h"
+#include "kernel/config.h"
+
+/* process ID data type (index in the process table) */
 typedef int process_id_t;
 
+typedef enum  {
+    PROCESS_FREE,
+    PROCESS_ZOMBIE,
+    PROCESS_ALIVE
+} process_state_t;
+
+typedef struct {
+    /* process name */
+    char process_name[CONFIG_MAX_PROCESS_NAME];
+
+    /* process state */
+    process_state_t state;
+
+    /* return value */
+    int retval;
+
+    /* Open files for the process */
+    gcd_t files[CONFIG_MAX_FILEHANDLES];
+
+} process_table_t;
+
+void process_init(void);
 void process_start(const char *executable);
+process_id_t process_spawn(const char *executable);
+void process_finish(int retval);
+process_id_t process_get_current_process(void);
+process_table_t *process_get_current_process_entry(void);
+int process_join(process_id_t pid);
 
 #define USERLAND_STACK_TOP 0x7fffeffc
 

@@ -61,4 +61,11 @@
 #define FILEHANDLE_STDOUT 1
 #define FILEHANDLE_STDERR 2
 
+/* Standard errors file system calls */
+#define SYSCALL_ILLEGAL_ARGUMENT -1
+#define SYSCALL_NOT_OPEN -2
+#define SYSCALL_OPERATION_NOT_POSSIBLE -3
+#define SYSCALL_ILLEGAL_PID -4
+#define SYSCALL_NOT_RUNNING  -5
+
 #endif

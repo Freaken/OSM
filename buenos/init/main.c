@@ -132,9 +132,11 @@ void init_startup_thread(uint32_t arg)
 
     kprintf("Starting initial program '%s'\n", bootargs_get("initprog"));
 
-    process_start(bootargs_get("initprog"));
+    process_spawn(bootargs_get("initprog"));
 
-    /* The current process_start() should never return. */
+    thread_finish();
+
+    /* The current thread_finish() should never return. */
     KERNEL_PANIC("Run out of initprog.\n");
 }
 
@@ -204,6 +206,9 @@ void init(void)
 
     kwrite("Initializing device drivers\n");
     device_init();
+
+    kwrite("Initializing process system\n");
+    process_init();
 
     kprintf("Initializing virtual filesystem\n");
     vfs_init();

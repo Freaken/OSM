@@ -45,6 +45,12 @@
 /* Size of the stack of a kernel thread */
 #define CONFIG_THREAD_STACKSIZE 4096
 
+/* Define the maximum number of user processes supported by the kernel */
+#define CONFIG_MAX_PROCESSES 32
+
+/* The maximum length of the name of a process */
+#define CONFIG_MAX_PROCESS_NAME 64
+
 /* Define the maximum number of CPUs supported by the kernel
  * Range from 1 to 32
  * CONFIG_MAX_THREADS should be the same or greater
@@ -84,6 +90,9 @@
  */
 
 #define CONFIG_MAX_OPEN_FILES 512
+
+/* Define maximum number of open files per process */
+#define CONFIG_MAX_FILEHANDLES 256
 
 /* Maximum number of simultaneously open sockets for POP/SOP 
  * Range from 4 to 65536

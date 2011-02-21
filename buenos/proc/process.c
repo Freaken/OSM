@@ -36,6 +36,8 @@
 
 #include "proc/process.h"
 #include "proc/elf.h"
+#include "proc/syscall.h"
+#include "kernel/spinlock.h"
 #include "kernel/thread.h"
 #include "kernel/assert.h"
 #include "kernel/interrupt.h"
@@ -44,12 +46,51 @@
 #include "drivers/yams.h"
 #include "vm/vm.h"
 #include "vm/pagepool.h"
+#include "lib/libc.h"
 
 
 /** @name Process startup
  *
  * This module contains a function to start a userland process.
  */
+
+/** Spinlock which must be hold when manipulating the process table */
+spinlock_t process_table_slock;
+
+/** The table containing all processes in the system, whether active or not. */
+process_table_t process_table[CONFIG_MAX_PROCESSES];
+
+gcd_t file_stdin, file_stdout, file_stderr;
+
+void process_init(void) {
+    device_t *dev;
+    gcd_t *gcd;
+    int n;
+
+    /* Find system console (first tty) */
+    dev = device_get(YAMS_TYPECODE_TTY, 0);
+    KERNEL_ASSERT(dev != NULL);
+
+
+    gcd = (gcd_t *)dev->generic_device;
+    KERNEL_ASSERT(gcd != NULL);
+
+    memcopy(sizeof(gcd_t), &file_stdin, gcd);
+    memcopy(sizeof(gcd_t), &file_stdout, gcd);
+    memcopy(sizeof(gcd_t), &file_stderr, gcd);
+
+    file_stdin.write = NULL;
+    file_stdout.read = NULL;
+    file_stderr.read = NULL;
+
+    /* Initializes spinlock */
+    spinlock_reset(&process_table_slock);
+
+    for(n = 0; n < CONFIG_MAX_PROCESSES; n++)
+        process_table[n].state = PROCESS_FREE;
+
+    /* TODO: Create an idle-process containing the already-existing idle-thread. */
+}
 
 /**
  * Starts one userland process. The thread calling this function will
@@ -103,7 +144,7 @@ void process_start(const char *executable)
        (including userland stack). Since we don't have proper tlb
        handling code, all these pages must fit into TLB. */
     KERNEL_ASSERT(elf.ro_pages + elf.rw_pages + CONFIG_USERLAND_STACK_SIZE
-		  <= _tlb_get_maxindex() + 1);
+                  <= _tlb_get_maxindex() + 1);
 
     /* Allocate and map stack */
     for(i = 0; i < CONFIG_USERLAND_STACK_SIZE; i++) {
@@ -150,19 +191,19 @@ void process_start(const char *executable)
     /* Copy segments */
 
     if (elf.ro_size > 0) {
-	/* Make sure that the segment is in proper place. */
+        /* Make sure that the segment is in proper place. */
         KERNEL_ASSERT(elf.ro_vaddr >= PAGE_SIZE);
         KERNEL_ASSERT(vfs_seek(file, elf.ro_location) == VFS_OK);
         KERNEL_ASSERT(vfs_read(file, (void *)elf.ro_vaddr, elf.ro_size)
-		      == (int)elf.ro_size);
+                      == (int)elf.ro_size);
     }
 
     if (elf.rw_size > 0) {
-	/* Make sure that the segment is in proper place. */
+        /* Make sure that the segment is in proper place. */
         KERNEL_ASSERT(elf.rw_vaddr >= PAGE_SIZE);
         KERNEL_ASSERT(vfs_seek(file, elf.rw_location) == VFS_OK);
         KERNEL_ASSERT(vfs_read(file, (void *)elf.rw_vaddr, elf.rw_size)
-		      == (int)elf.rw_size);
+                      == (int)elf.rw_size);
     }
 
 
@@ -185,6 +226,105 @@ void process_start(const char *executable)
     thread_goto_userland(&user_context);
 
     KERNEL_PANIC("thread_goto_userland failed.");
+}
+
+process_id_t process_spawn(const char *executable) {
+    process_id_t process_id;
+    process_table_t *process;
+    TID_t spawned_thread;
+    interrupt_status_t intr_status;
+
+    if(strlen(executable) >= CONFIG_MAX_PROCESS_NAME)
+        return SYSCALL_ILLEGAL_ARGUMENT;
+    
+    intr_status = _interrupt_disable();
+    spinlock_acquire(&process_table_slock);
+
+
+    process_id = 17; /* TODO: get the process id a smarter way */
+    process = &(process_table[process_id]);
+
+    /* Initializes open files */
+    memoryset(process->files, 0, sizeof(process->files));
+    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDIN], &file_stdin); 
+    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDOUT], &file_stdout); 
+    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDERR], &file_stderr); 
+
+    stringcopy(process->process_name, executable, CONFIG_MAX_PROCESS_NAME);
+    process->state = PROCESS_ALIVE;
+
+    spawned_thread = thread_create((void (*)(uint32_t)) &process_start, (uint32_t) (process->process_name));
+    thread_set_process_id(spawned_thread, process_id);
+    thread_run(spawned_thread);
+
+    spinlock_release(&process_table_slock);
+    _interrupt_set_state(intr_status);
+
+    return process_id;
+}
+
+void process_finish(int retval) {
+    process_table_t *process;
+    interrupt_status_t intr_status;
+
+    intr_status = _interrupt_disable();
+    spinlock_acquire(&process_table_slock);
+
+    process = process_get_current_process_entry();
+
+    if(process->state == PROCESS_ALIVE) {
+        process->retval = retval;
+        process->state = PROCESS_ZOMBIE;
+        /* TODO: wake_all */
+        /* TODO: free page tables */
+        /* TODO: kill thread too */
+    }
+
+    spinlock_release(&process_table_slock);
+    _interrupt_set_state(intr_status);
+
+}
+
+process_id_t process_get_current_process(void) {
+    return thread_get_current_thread_entry()->process_id;
+}
+
+process_table_t *process_get_current_process_entry(void) {
+    return &process_table[process_get_current_process()];
+}
+
+int process_join(process_id_t pid) {
+    process_table_t *process;
+    interrupt_status_t intr_status;
+    int retval;
+
+    if(pid <= 0 || pid >= CONFIG_MAX_PROCESSES)
+        return SYSCALL_ILLEGAL_ARGUMENT;
+
+    intr_status = _interrupt_disable();
+    spinlock_acquire(&process_table_slock);
+
+    process = &process_table[pid];
+
+    if(process->state == PROCESS_FREE) {
+        spinlock_release(&process_table_slock);
+        _interrupt_set_state(intr_status);
+        return SYSCALL_NOT_RUNNING;
+    }
+
+    if(process->state == PROCESS_ALIVE) {
+        /* TODO: wait for exit */
+    }
+
+    retval = process->retval;
+
+    process->state = PROCESS_FREE;
+
+    spinlock_release(&process_table_slock);
+    _interrupt_set_state(intr_status);
+
+    return retval;
+
 }
 
 /** @} */
