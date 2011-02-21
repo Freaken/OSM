@@ -352,8 +352,9 @@ process_id_t process_get_current_process(void) {
 }
 
 /**
- * Gets the current row in the process table associated with the currently running thread,
- * by using process_get_current_process.
+ * Gets the current row in the process table associated with the currently
+ * running thread,by using process_get_current_process. The result should not
+ * be changed unless the spinlock is held.
  */
 process_table_t *process_get_current_process_entry(void) {
     return &process_table[process_get_current_process()];
