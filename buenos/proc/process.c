@@ -278,20 +278,28 @@ process_id_t process_spawn(const char *executable) {
  * so it can be finished by its parent.
  */
 void process_finish(int retval) {
-    process_table_t *process;
     interrupt_status_t intr_status;
+    TID_t thread_id;
+    thread_table_t *thread;
+    process_table_t *process;
 
     /* Acquire the lock */
     intr_status = _interrupt_disable();
     spinlock_acquire(&process_table_slock);
 
-    process = process_get_current_process_entry();
+    thread_id = thread_get_current_thread();
+    thread = thread_get_current_thread_entry();
+    process = &process_table[thread->process_id];
 
     if(process->state == PROCESS_ALIVE) {
         process->retval = retval;
         process->state = PROCESS_ZOMBIE;
-        /* TODO: free page tables */
-        /* TODO: kill thread */
+
+        /* Kills thread */
+        vm_destroy_pagetable(thread->pagetable);
+        thread->pagetable = NULL;
+        thread_finish(thread_id);
+
         /* TODO: wake_all waiting to join */
     }
 
