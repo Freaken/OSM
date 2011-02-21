@@ -352,7 +352,17 @@ int process_join(process_id_t pid) {
 
     /* If it is still runnig, wait for it to exit */
     if(process->state == PROCESS_ALIVE) {
-        /* TODO: wait for exit */
+        sleepq_add(process);
+        spinlock_release(&process_table_slock);
+        thread_switch();
+        spinlock_acquire(&process_table_slock);
+    }
+
+    /* If process is not a zombie, multiple joins have occured */
+    if(process->state != PROCESS_ZOMBIE) {
+        spinlock_release(&process_table_slock);
+        _interrupt_set_state(intr_status);
+        return SYSCALL_OPERATION_NOT_POSSIBLE;
     }
 
     /* Finishes up the process */
