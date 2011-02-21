@@ -235,7 +235,7 @@ void process_start(const char *executable)
 }
 
 /**
- * Spawns a new thread in which it loads a new executable from disk.
+ * Spawns a new thread+process in which it loads a new executable from disk.
  */
 process_id_t process_spawn(const char *executable) {
     static process_id_t next_process_id = 0;
@@ -254,9 +254,6 @@ process_id_t process_spawn(const char *executable) {
     /* Find the first free process table entry starting from 'next_process_id' */
     for (i=0; i<CONFIG_MAX_PROCESSES; i++) {
         process_id_t p = (i + next_process_id) % CONFIG_MAX_PROCESS_NAME;
-
-        if (process_table[p].state != PROCESS_FREE)
-            continue;
 
         if (process_table[p].state == PROCESS_FREE) {
             process_id = p;
