@@ -42,6 +42,9 @@
 #include "proc/syscall.h"
 #include "proc/process.h"
 
+/**
+ * Local helper-function to handle a syscall_write.
+ */
 int _syscall_write(context_t *user_context) {
     /* Syscall argument */
     int file_handle = user_context->cpu_regs[MIPS_REGISTER_A1];
@@ -70,6 +73,9 @@ int _syscall_write(context_t *user_context) {
     return length;
 }
 
+/**
+ * Local helper-function to handle a syscall_read.
+ */
 int _syscall_read(context_t *user_context) {
     /* Syscall argument */
     int file_handle = user_context->cpu_regs[MIPS_REGISTER_A1];
