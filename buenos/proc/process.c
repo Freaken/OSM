@@ -42,6 +42,7 @@
 #include "kernel/assert.h"
 #include "kernel/interrupt.h"
 #include "kernel/config.h"
+#include "kernel/sleepq.h"
 #include "fs/vfs.h"
 #include "drivers/yams.h"
 #include "vm/vm.h"
@@ -298,9 +299,10 @@ void process_finish(int retval) {
         /* Kills thread */
         vm_destroy_pagetable(thread->pagetable);
         thread->pagetable = NULL;
-        thread_finish(thread_id);
+        thread_finish();
 
-        /* TODO: wake_all waiting to join */
+        /* Wake up processes waiting to join */
+        sleepq_wake_all(process);
     }
 
     spinlock_release(&process_table_slock);
