@@ -1,1 +1,2 @@
 \section{Opgave2}
+Alle syscalls er implementeret i det dertilhørende switch-statement. Til read og write har vi lavet vores egne hjælpefunktioner i proc/syscall.c. De virker med alle filehandles, men resten af systemet understøtter kun stdin/stdout indtil videre. Alle de andre systemkald krævede blot at kalde en af hjælpefunktionerne fra opgave 1 med de rigtige argumenter.

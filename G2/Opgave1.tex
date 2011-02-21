@@ -1,1 +1,17 @@
 \section{Opgave1}
+Vores datastruktur består af en table af processer, hvor hvert entry i tabellen
+består af et navn på en proces, tilstanden for processen, dens returværdi
+og hvilke filer processen har åben.
+Hvis tilstanden er ``free'' er der ikke nogen proces på denne plads,
+hvis den er ``zombie'' venter den at blive samlet op via process\_join, og hvis
+den er ``alive'' så er den i live.
+
+Vi har desuden en statisk maksimum på antallet af processer defineret ved\\ 
+CONFIG\_MAX\_PROCESSES i config filen.
+
+Vi har ændret i oprettelsen af kernetråde således at de nu korrekt refere til
+den proces der har skabt dem. Desuden har vi nu en IDLE\_PROCESS\_PID
+(default sat til 0) som ejer IDLE\_THREAD\_TID.
+
+I hjælpefunktionerne (herefter beskrevet) sørger vi for at manipulationer
+af procestabellen foregår atomisk, vha. spinlock.
