@@ -55,6 +55,21 @@
  * This module contains a function to start a userland process.
  */
 
+/*
+ * We need to pass a bunch of data to the new thread, but we can only
+ * pass a single 32 bit number!  How do we deal with that?  Simple -
+ * we allocate a structure on the stack of the forking kernel thread
+ * containing all the data we need, with a 'done' field that indicates
+ * when the new thread has copied over the data.  See process_fork().
+ */
+typedef struct thread_params_t {
+    volatile uint32_t done; /* Don't cache in register. */
+    void (*func)(int);
+    int arg;
+    process_id_t pid;
+    pagetable_t *pagetable;
+} thread_params_t;
+
 /** Spinlock which must be hold when manipulating the process table */
 spinlock_t process_table_slock;
 
@@ -298,6 +313,12 @@ process_id_t process_spawn(const char *executable) {
     thread_set_process_id(spawned_thread, process_id);
     thread_run(spawned_thread);
 
+    /* Updates the process table with thread information */
+    process_table[process_id].threads = 1;
+    process_table[process_id].stack_end = (USERLAND_STACK_TOP & PAGE_SIZE_MASK) -
+                                   (CONFIG_USERLAND_STACK_SIZE-1)*PAGE_SIZE;
+    process_table[process_id].bot_free_stack = 0;
+
     /* Releases lock */
     spinlock_release(&process_table_slock);
     _interrupt_set_state(intr_status);
@@ -414,5 +435,96 @@ int process_join(process_id_t pid) {
     return retval;
 
 }
+
+void setup_thread(thread_params_t *params) {
+    context_t user_context;
+    uint32_t phys_page;
+    int i;
+    interrupt_status_t intr_status;
+    thread_table_t *thread= thread_get_current_thread_entry();
+
+    /* Copy thread parameters. */
+    int arg = params->arg;
+    void (*func)(int) = params->func;
+    process_id_t pid = thread->process_id = params->pid;
+    thread->pagetable = params->pagetable;
+    params->done = 1; /* OK, we don't need params any more. */
+
+    intr_status = _interrupt_disable();
+    spinlock_acquire(&process_table_slock);
+
+    /* Set up userspace environment. */
+    memoryset(&user_context, 0, sizeof(user_context));
+
+    user_context.cpu_regs[MIPS_REGISTER_A0] = arg;
+    user_context.pc = (uint32_t)func;
+
+    /* Allocate thread stack */
+    if (process_table[pid].bot_free_stack != 0) {
+        /* Reuse old thread stack. */
+        user_context.cpu_regs[MIPS_REGISTER_SP] =
+            process_table[pid].bot_free_stack
+            + CONFIG_USERLAND_STACK_SIZE*PAGE_SIZE
+            - 4; /* Space for the thread argument */
+        process_table[pid].bot_free_stack =
+            *(uint32_t*)process_table[pid].bot_free_stack;
+    } else {
+        /* Allocate physical pages (frames) for the stack. */
+        for (i = 0; i < CONFIG_USERLAND_STACK_SIZE; i++) {
+            phys_page = pagepool_get_phys_page();
+            KERNEL_ASSERT(phys_page != 0);
+            vm_map(thread->pagetable, phys_page, 
+                   process_table[pid].stack_end - (i+1)*PAGE_SIZE, 1);
+        }
+        user_context.cpu_regs[MIPS_REGISTER_SP] =
+            process_table[pid].stack_end-4; /* Space for the thread argument */
+        process_table[pid].stack_end -= PAGE_SIZE*CONFIG_USERLAND_STACK_SIZE;
+    }
+
+    tlb_fill(thread->pagetable);
+
+    spinlock_release(&process_table_slock);
+    _interrupt_set_state(intr_status);
+
+    thread_goto_userland(&user_context);
+}
+
+TID_t process_fork(void (*func)(int), int arg) {
+    TID_t tid;
+    thread_table_t *thread = thread_get_current_thread_entry();
+    process_id_t pid = thread->process_id;
+    interrupt_status_t intr_status;
+    thread_params_t params;
+    params.done = 0;
+    params.func = func;
+    params.arg = arg;
+    params.pid = pid;
+    params.pagetable = thread->pagetable;
+
+    intr_status = _interrupt_disable();
+    spinlock_acquire(&process_table_slock);
+
+    tid = thread_create((void (*)(uint32_t))(setup_thread), (uint32_t)&params);
+
+    if (tid < 0) {
+        spinlock_release(&process_table_slock);
+        _interrupt_set_state(intr_status);
+        return -1;
+    }
+
+    process_table[pid].threads++;
+
+    spinlock_release(&process_table_slock);
+    _interrupt_set_state(intr_status);
+
+    thread_run(tid);
+
+    /* params will be dellocated when we return, so don't until the
+       new thread is ready. */
+    while (!params.done);
+
+    return tid;
+}
+
 
 /** @} */
