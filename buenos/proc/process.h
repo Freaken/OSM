@@ -62,6 +62,15 @@ typedef struct {
     /* Open files for the process */
     gcd_t files[CONFIG_MAX_FILEHANDLES];
 
+    /* Number of threads in the process. */
+    int threads;
+
+    /* End of lowest stack. */
+    uint32_t stack_end;
+
+    /* Start of lowest free stack (0 if none). */
+    uint32_t bot_free_stack;
+
 } process_table_t;
 
 void process_init(void);
@@ -71,9 +80,9 @@ void process_finish(int retval);
 process_id_t process_get_current_process(void);
 process_table_t *process_get_current_process_entry(void);
 int process_join(process_id_t pid);
-
+int process_fork(void (*func)(int), int arg);
 #define IDLE_PROCESS_PID 0
-
 #define USERLAND_STACK_TOP 0x7fffeffc
+#define USERLAND_STACK_MASK (PAGE_SIZE_MASK*CONFIG_USERLAND_STACK_SIZE)
 
 #endif
