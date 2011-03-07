@@ -171,7 +171,7 @@ void syscall_handle(context_t *user_context)
 
     case SYSCALL_CONDITION_CREATE:
         user_context->cpu_regs[MIPS_REGISTER_V0] =
-            condition_create((cond_t*) user_context->cpu_regs[MIPS_REGISTER_A1]);
+            condition_reset((cond_t*) user_context->cpu_regs[MIPS_REGISTER_A1]);
         break;
 
     case SYSCALL_CONDITION_WAIT:
