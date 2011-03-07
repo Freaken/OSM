@@ -104,11 +104,6 @@ int _syscall_read(context_t *user_context) {
     return length;
 }
 
-int syscall_fork(void (*func)(int), int arg)   {
-    return process_fork(func, arg);
-}
-
-
 /**
  * Handle system calls. Interrupts are enabled when this function is
  * called.
@@ -155,10 +150,10 @@ void syscall_handle(context_t *user_context)
         break;
 
     case SYSCALL_FORK:
-            user_context->cpu_regs[MIPS_REGISTER_V0] =
-                syscall_fork((void (*)(int))user_context->cpu_regs[MIPS_REGISTER_A1],
-                user_context->cpu_regs[MIPS_REGISTER_A2]);
-    break;
+        user_context->cpu_regs[MIPS_REGISTER_V0] = process_fork(
+            (void (*)(int))user_context->cpu_regs[MIPS_REGISTER_A1],
+            user_context->cpu_regs[MIPS_REGISTER_A2]);
+        break;
 
     default:
         KERNEL_PANIC("Unhandled system call\n");

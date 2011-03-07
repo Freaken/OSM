@@ -308,22 +308,49 @@ process_id_t process_spawn(const char *executable) {
     stringcopy(process->process_name, executable, CONFIG_MAX_PROCESS_NAME);
     process->state = PROCESS_ALIVE;
 
+    /* Updates the process table with thread information */
+    process->threads = 1;
+    process->stack_end = (USERLAND_STACK_TOP & PAGE_SIZE_MASK) -
+                         (CONFIG_USERLAND_STACK_SIZE-1)*PAGE_SIZE;
+    process->bot_free_stack = 0;
+
     /* Spawns the a new thread for the process */
     spawned_thread = thread_create((void (*)(uint32_t)) &process_start, (uint32_t) (process->process_name));
     thread_set_process_id(spawned_thread, process_id);
     thread_run(spawned_thread);
-
-    /* Updates the process table with thread information */
-    process_table[process_id].threads = 1;
-    process_table[process_id].stack_end = (USERLAND_STACK_TOP & PAGE_SIZE_MASK) -
-                                   (CONFIG_USERLAND_STACK_SIZE-1)*PAGE_SIZE;
-    process_table[process_id].bot_free_stack = 0;
 
     /* Releases lock */
     spinlock_release(&process_table_slock);
     _interrupt_set_state(intr_status);
 
     return process_id;
+}
+
+/**
+ * This function inserts the userspace thread stack in a list of free
+ * stacks maintained in the process table entry.  This means that
+ * when/if the next thread is created, we can reuse one of the old
+ * stacks, and reduce memory usage.  Note that the stack is not really
+ * "deallocated" per se, and still counts towards the 64KiB memory
+ * limit for processes.  This is a simple mechanism, not a very good
+ * one.  This function assumes that the process table is already
+ * locked.
+ *
+ * @param my_thread The thread whose stack should be deallocated.
+ *
+ */
+void process_free_stack(thread_table_t *my_thread) {
+    /* Assume we have lock on the process table. */
+    process_id_t my_pid = my_thread->process_id;
+    uint32_t old_free_list = process_table[my_pid].bot_free_stack;
+    /* Find the stack by applying a mask to the stack pointer. */
+    uint32_t stack =
+        my_thread->user_context->cpu_regs[MIPS_REGISTER_SP] & USERLAND_STACK_MASK;
+
+    KERNEL_ASSERT(stack >= process_table[my_pid].stack_end);
+
+    process_table[my_pid].bot_free_stack = stack;
+    *(uint32_t*)stack = old_free_list;
 }
 
 /**
@@ -344,24 +371,26 @@ void process_finish(int retval) {
     thread = thread_get_current_thread_entry();
     process = &process_table[thread->process_id];
 
-    if(process->state == PROCESS_ALIVE) {
+    process_free_stack(thread);
+
+    process->threads--;
+
+    if(process->threads == 0) {
         process->retval = retval;
         process->state = PROCESS_ZOMBIE;
 
         /* Frees resources */
         vm_destroy_pagetable(thread->pagetable);
-        thread->pagetable = NULL;
 
         /* Wakes processes trying to join */
         sleepq_wake_all(process);
-
-        /* Kills thread (and does not return) */
-        spinlock_release(&process_table_slock);
-        thread_finish();
     }
 
+    thread->pagetable = NULL;
+
+    /* Kills thread (and does not return) */
     spinlock_release(&process_table_slock);
-    _interrupt_set_state(intr_status);
+    thread_finish();
 
 }
 
