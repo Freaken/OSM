@@ -28,8 +28,8 @@ void lock_acquire(lock_t *lock) {
     }
 
     lock->locked = 1;
-    spinlock_release(&lock->slock);
 
+    spinlock_release(&lock->slock);
     _interrupt_set_state(intr_status);
 }
 
