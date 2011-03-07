@@ -282,7 +282,7 @@ int puts(const char* s)
 
 /* Read character from standard input, without echoing.  Returns a
    non-negative integer on success, which can be casted to char. */
-int getc_raw(void)
+char getc_raw(void)
 {
     char c;
     syscall_read(stdin, &c, 1);
@@ -291,7 +291,7 @@ int getc_raw(void)
 
 /* Read character from standard input, with echoing.  Returns a
    non-negative integer on success, which can be casted to char. */
-int getc(void)
+char getc(void)
 {
     char c = getc_raw();
     syscall_write(stdout, &c, 1); /* Echo back at user. */
