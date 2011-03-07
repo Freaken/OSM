@@ -2,7 +2,7 @@
 
 int main(void) {
 
-    char file[] = "[disk1]print";
+    char file[] = "[disk1]fork";
 
     printf("Press a key to spawn %s\n", file);
 
