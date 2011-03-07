@@ -1,6 +1,7 @@
 halt
 print
 spawn
+fork
 *.map
 *.o
 
