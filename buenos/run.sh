@@ -4,8 +4,8 @@ if [ $# -lt 1 ]; then
 	exit 1
 fi
 
-make
-make -C tests/
+make || exit 0
+make -C tests/ || exit 0
 rm store.file
 util/tfstool create store.file 2048 disk1
 
