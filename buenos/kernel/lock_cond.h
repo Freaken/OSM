@@ -3,7 +3,7 @@
 
 typedef struct {
     spinlock_t slock;
-    bool locked;
+    int locked;
 } lock_t;
 
 int lock_reset(lock_t *lock);
