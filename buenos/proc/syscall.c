@@ -38,6 +38,7 @@
 #include "kernel/cswitch.h"
 #include "kernel/halt.h"
 #include "kernel/panic.h"
+#include "kernel/lock_cond.h"
 #include "lib/libc.h"
 #include "proc/syscall.h"
 #include "proc/process.h"
@@ -153,6 +154,37 @@ void syscall_handle(context_t *user_context)
         user_context->cpu_regs[MIPS_REGISTER_V0] = process_fork(
             (void (*)(int))user_context->cpu_regs[MIPS_REGISTER_A1],
             user_context->cpu_regs[MIPS_REGISTER_A2]);
+        break;
+
+    case SYSCALL_LOCK_CREATE:
+        user_context->cpu_regs[MIPS_REGISTER_V0] =
+            lock_reset((lock_t*) user_context->cpu_regs[MIPS_REGISTER_A1]);
+        break;
+
+    case SYSCALL_LOCK_ACQUIRE:
+        lock_acquire((lock_t*) user_context->cpu_regs[MIPS_REGISTER_A1]);
+        break;
+
+    case SYSCALL_LOCK_RELEASE:
+        lock_release((lock_t*) user_context->cpu_regs[MIPS_REGISTER_A1]);
+        break;
+
+    case SYSCALL_CONDITION_CREATE:
+        user_context->cpu_regs[MIPS_REGISTER_V0] =
+            condition_create((cond_t*) user_context->cpu_regs[MIPS_REGISTER_A1]);
+        break;
+
+    case SYSCALL_CONDITION_WAIT:
+        condition_wait((cond_t*) user_context->cpu_regs[MIPS_REGISTER_A1],
+                       (lock_t*) user_context->cpu_regs[MIPS_REGISTER_A2]);
+        break;
+
+    case SYSCALL_CONDITION_SIGNAL:
+        condition_signal((cond_t*) user_context->cpu_regs[MIPS_REGISTER_A1]);
+        break;
+
+    case SYSCALL_CONDITION_BROADCAST:
+        condition_broadcast((cond_t*) user_context->cpu_regs[MIPS_REGISTER_A1]);
         break;
 
     default:
