@@ -16,34 +16,34 @@
 
 /* Boot sector information */
 
-typedef struct fat32_BPP_struct {
-    char BS_jmpBoot[3];
-    char BS_OEMName[8];
-    unsigned short BPB_BytsPerSec;
-    unsigned char  BPB_SecPerClus;
-    unsigned short BPB_RsvdSecCnt;
-    unsigned char  BPB_NumFATs;
-    unsigned short BPB_RootEntCnt;
-    unsigned short BPB_TotSec16;
-    unsigned char  BPB_Media;
-    unsigned short BPB_FATSz16;
-    unsigned short BPB_SecPerTrk;
-    unsigned short BPB_NumHeads;
-    unsigned int   BPB_HiddSec;
-    unsigned int   BPB_TotSec32;
-    unsigned int   BPB_FATSz32;
-    unsigned short BPB_ExtFlags;
-    unsigned short BPB_FSVer;
-    unsigned int   BPB_RootClus;
-    unsigned short BPB_FSInfo;
-    unsigned short BPB_BkBootSec;
-    unsigned char  BPB_Reserved[12];
-    unsigned char  BS_DrvNum;
-    unsigned char  BS_Reserved1;
-    unsigned char  BS_BootSig;
-    unsigned int   BS_VolID;
-    unsigned char  BS_VolLab[11];
-    unsigned char  BS_FilSysType[8];
+typedef struct fat32_BPP_struct {      /* Offset | Size */
+    char BS_jmpBoot[3];                /*      0 |    3 */
+    char BS_OEMName[8];                /*      3 |    8 */
+    unsigned short BPB_BytsPerSec;     /*     11 |    2 */
+    unsigned char  BPB_SecPerClus;     /*     13 |    1 */
+    unsigned short BPB_RsvdSecCnt;     /*     14 |    2 */
+    unsigned char  BPB_NumFATs;        /*     16 |    1 */
+    unsigned short BPB_RootEntCnt;     /*     17 |    2 */
+    unsigned short BPB_TotSec16;       /*     19 |    2 */
+    unsigned char  BPB_Media;          /*     21 |    1 */
+    unsigned short BPB_FATSz16;        /*     22 |    2 */
+    unsigned short BPB_SecPerTrk;      /*     24 |    2 */
+    unsigned short BPB_NumHeads;       /*     26 |    2 */
+    unsigned int   BPB_HiddSec;        /*     28 |    4 */
+    unsigned int   BPB_TotSec32;       /*     32 |    4 */
+    unsigned int   BPB_FATSz32;        /*     36 |    4 */
+    unsigned short BPB_ExtFlags;       /*     40 |    2 */
+    unsigned short BPB_FSVer;          /*     42 |    2 */
+    unsigned int   BPB_RootClus;       /*     44 |    4 */
+    unsigned short BPB_FSInfo;         /*     48 |    2 */
+    unsigned short BPB_BkBootSec;      /*     50 |    2 */
+    unsigned char  BPB_Reserved[12];   /*     52 |   12 */
+    unsigned char  BS_DrvNum;          /*     64 |    1 */
+    unsigned char  BS_Reserved1;       /*     65 |    1 */
+    unsigned char  BS_BootSig;         /*     66 |    1 */
+    unsigned int   BS_VolID;           /*     67 |    4 */
+    unsigned char  BS_VolLab[11];      /*     71 |   11 */
+    unsigned char  BS_FilSysType[8];   /*     82 |    8 */
 } __attribute__((__packed__)) fat32_BPP_struct;
 
 
