@@ -76,8 +76,8 @@ spinlock_t process_table_slock;
 /** The table containing all processes in the system, whether active or not. */
 process_table_t process_table[CONFIG_MAX_PROCESSES];
 
-/** Character devices for stdin, stdout, stderr */
-gcd_t file_stdin, file_stdout, file_stderr;
+/* General character device for tty */
+gcd_t *tty_console;
 
 /**
  * Initializes the process table, the process table spinlock,
@@ -85,23 +85,14 @@ gcd_t file_stdin, file_stdout, file_stderr;
  */
 void process_init(void) {
     device_t *dev;
-    gcd_t *gcd;
     int n;
 
     /* Find system console (first tty) */
     dev = device_get(YAMS_TYPECODE_TTY, 0);
     KERNEL_ASSERT(dev != NULL);
 
-    gcd = (gcd_t *)dev->generic_device;
-    KERNEL_ASSERT(gcd != NULL);
-
-    memcopy(sizeof(gcd_t), &file_stdin, gcd);
-    memcopy(sizeof(gcd_t), &file_stdout, gcd);
-    memcopy(sizeof(gcd_t), &file_stderr, gcd);
-
-    file_stdin.write = NULL;
-    file_stdout.read = NULL;
-    file_stderr.read = NULL;
+    tty_console = (gcd_t *)dev->generic_device;
+    KERNEL_ASSERT(tty_console != NULL);
 
     /* Initializes spinlock */
     spinlock_reset(&process_table_slock);
@@ -112,12 +103,6 @@ void process_init(void) {
 
     /* Initializes idle thread */
     process_table_t *idle_process = &process_table[IDLE_PROCESS_PID];
-
-    /* Initializes open files */
-    memoryset(idle_process->files, 0, sizeof(idle_process->files));
-    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDIN], &file_stdin);
-    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDOUT], &file_stdout);
-    memcopy(sizeof(gcd_t), &idle_process->files[FILEHANDLE_STDERR], &file_stderr);
 
     /* Sets process name and state */
     stringcopy(idle_process->process_name, "idle", CONFIG_MAX_PROCESS_NAME);
@@ -297,12 +282,6 @@ process_id_t process_spawn(const char *executable) {
     next_process_id = (process_id + 1) % CONFIG_MAX_PROCESSES;
 
     process = &(process_table[process_id]);
-
-    /* Initializes open files */
-    memoryset(process->files, 0, sizeof(process->files));
-    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDIN], &file_stdin);
-    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDOUT], &file_stdout);
-    memcopy(sizeof(gcd_t), &process->files[FILEHANDLE_STDERR], &file_stderr);
 
     /* Sets process name and state */
     stringcopy(process->process_name, executable, CONFIG_MAX_PROCESS_NAME);

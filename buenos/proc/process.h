@@ -40,6 +40,9 @@
 #include "drivers/gcd.h"
 #include "kernel/config.h"
 
+/** Character devices for console */
+extern gcd_t *tty_console;
+
 /* process ID data type (index in the process table) */
 typedef int process_id_t;
 
@@ -58,9 +61,6 @@ typedef struct {
 
     /* return value */
     int retval;
-
-    /* Open files for the process */
-    gcd_t files[CONFIG_MAX_FILEHANDLES];
 
     /* Number of threads in the process. */
     int threads;

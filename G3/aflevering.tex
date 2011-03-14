@@ -9,17 +9,30 @@
 \thispagestyle{empty}
 
 \section{Opgave 1}
-Det er trivielt, idet størstedelen af funktionaliteten allerede er implementeret
-og resten giver sig selv.
+
+Denne opgave har vi løst ved hjælp af en spinlock, som skal holdes før
+der læses eller ændres på status af den værdi hvori vi gemmer status på
+låsen. Vi bruger desuden sleepq funktionaliteten i {\tt lock\_acquire} til at
+finde ud af hvornår låsen bliver låst op i {\tt lock\_release}. Spinlocks
+funktionaliteten er allerede implementeret i {\tt kernel/spinlock.c}, mens
+sleepq er implementeret i {\tt kernel/sleepq.c}. Med brug af disse løser
+opgaven næsten sig selv.
 
 \section{Opgave 2}
-Se opgave 1.
+
+I denne opgave har vi blot implementeret et interface til den allerede
+eksisterende sleepq i {\tt kernel/sleepq.c}. Den eneste forskel i semantikken af
+funktionerne er at {\tt condition\_wait} også låser den medfølgende lås op i
+det tidsrum hvor den venter på at blive vækket.
 
 \section{Opgave 3}
-Det er copy-paste. Vi har dog også skrevet en test i form af fork.c (samt evt
-spawn.c).
+
+Denne opgave gik ud på at følge en meget udspecificeret guide til hvordan
+vi ændrede vores kode. Vi copy-pastede koden ind og testede om det virkede.
 
 \section{Opgave 4}
-Det er blot viderestilling af syscalls til funktionerne i opgave 1 og 2.
+
+I denne opgave skulle vi lave viderestilling til funktionerne fra opgave 1 og
+2. Dette har vi gjort.
 
 \end{document}
