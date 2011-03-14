@@ -138,6 +138,7 @@ void syscall_handle(context_t *user_context)
         user_context->cpu_regs[MIPS_REGISTER_V0] = vfs_seek(
             user_context->cpu_regs[MIPS_REGISTER_A1],
             user_context->cpu_regs[MIPS_REGISTER_A2]);
+        break;
 
     case SYSCALL_READ:
         user_context->cpu_regs[MIPS_REGISTER_V0] = _syscall_read(user_context);
