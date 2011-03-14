@@ -7,6 +7,13 @@
 #ifndef FS_FAT32_H
 #define FS_FAT32_H
 
+/* FAT32 sector size */
+#define FAT32_BLOCK_SIZE 512
+
+/* FAT32 magic */
+#define FAT32_MAGIC 0x55aa
+
+
 /* Boot sector information */
 
 typedef struct fat32_BPP_struct {
