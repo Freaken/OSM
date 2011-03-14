@@ -542,7 +542,7 @@ openfile_t vfs_open(char *pathname)
     semaphore_P(vfs_table.sem);
     semaphore_P(openfile_table.sem);
     
-    for(file=0; file<CONFIG_MAX_OPEN_FILES; file++) {
+    for(file=3; file<CONFIG_MAX_OPEN_FILES; file++) {
 	if(openfile_table.files[file].filesystem == NULL) {
 	    break;
 	}
