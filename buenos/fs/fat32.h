@@ -7,6 +7,8 @@
 #ifndef FS_FAT32_H
 #define FS_FAT32_H
 
+#include "fs/filesystems.h"
+
 /* FAT32 sector size */
 #define FAT32_BLOCK_SIZE 512
 
@@ -16,7 +18,7 @@
 
 /* Boot sector information */
 
-typedef struct fat32_BPP_struct {      /* Offset | Size */
+struct fat32_BPP_struct {              /* Offset | Size */
     char BS_jmpBoot[3];                /*      0 |    3 */
     char BS_OEMName[8];                /*      3 |    8 */
     unsigned short BPB_BytsPerSec;     /*     11 |    2 */
@@ -44,7 +46,9 @@ typedef struct fat32_BPP_struct {      /* Offset | Size */
     unsigned int   BS_VolID;           /*     67 |    4 */
     unsigned char  BS_VolLab[11];      /*     71 |   11 */
     unsigned char  BS_FilSysType[8];   /*     82 |    8 */
-} __attribute__((__packed__)) fat32_BPP_struct;
+} __attribute__((__packed__)); 
+
+typedef struct fat32_BPP_struct fat32_BPP_struct;
 
 
 /* functions */

@@ -36,6 +36,7 @@
 
 #include "fs/filesystems.h"
 #include "fs/tfs.h"
+#include "fs/fat32.h"
 #include "drivers/device.h"
 
 /* NULL terminated table of all available filesystems. */

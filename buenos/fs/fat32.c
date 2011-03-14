@@ -4,9 +4,18 @@
  * Copyright (C) 2011 Ye Olde Overlords
  */
 
+#include "drivers/gbd.h"
+#include "fs/fat32.h"
+#include "kernel/assert.h"
+#include "kernel/semaphore.h"
+#include "vm/pagepool.h"
+
 typedef struct {
-    /* Total number of blocks of the disk */
-    uint32_t totalblocks;
+    /* Reference to the boot secter headers */
+    fat32_BPP_struct *fat32_BPP;
+
+    /* Pointer to gbd device performing tfs */
+    gbd_t          *disk;
 
     /* lock for mutual exclusion of fs-operations (we support only
        one operation at a time in any case) */
@@ -16,15 +25,15 @@ typedef struct {
 
 
 fs_t * fat32_init(gbd_t *disk) {
-
     uint32_t addr;
     gbd_request_t req;
-    fs_t *fs;
-    fat32_t *fat32;
+    /*fs_t *fs;
+    fat32_t *fat32;*/
+    fat32_BPP_struct *fat32_BPP;
     int r;
     semaphore_t *sem;
 
-    if(disk->block_size(disk) != TFS_BLOCK_SIZE)
+    if(disk->block_size(disk) != FAT32_BLOCK_SIZE)
         return NULL;
 
     /* check semaphore availability before memory allocation */
@@ -57,32 +66,26 @@ fs_t * fat32_init(gbd_t *disk) {
         kprintf("fat32_init: Error during disk read. Initialization failed.\n");
         return NULL; 
     }
+    short *fat32_magic = (short*) (addr + 510);
 
-    if(((uint32_t *)addr)[0] != TFS_MAGIC) {
+    if(*fat32_magic != 0x55aa) {
         semaphore_destroy(sem);
         pagepool_free_phys_page(ADDR_KERNEL_TO_PHYS(addr));
         return NULL;
     }
 
-    /* fs_t, fat32_t and all buffers in fat32_t fit in one page, so obtain
-       addresses for each structure and buffer inside the allocated
-       memory page. */
-    fs  = (fs_t *)addr;
-    fat32 = (fat32_t *)(addr + sizeof(fs_t));
-    fat32->buffer_inode = (fat32_inode_t *)((uint32_t)fat32 + sizeof(fat32_t));
-    fat32->buffer_bat  = (bitmap_t *)((uint32_t)fat32->buffer_inode + 
-                                    TFS_BLOCK_SIZE);
-    fat32->buffer_md   = (fat32_direntry_t *)((uint32_t)fat32->buffer_bat + 
-                                        TFS_BLOCK_SIZE);
-
-    fat32->totalblocks = MIN(disk->total_blocks(disk), 8*TFS_BLOCK_SIZE);
-    fat32->disk        = disk;
+    fat32_BPP  = (fat32_BPP_struct *)addr;
+    fat32 = (fat32_t *) (addr + sizeof(fat32_BPP_struct));
+    fs = (fs_t *) (addr + sizeof(fat32_BPP_struct) + sizeof(fat32_t *));
 
     /* save the semaphore to the fat32_t */
+    fat32->disk = disk;
     fat32->lock = sem;
+    fat32->fat32_BPP = fat32_BPP;
 
     fs->internal = (void *)fat32;
-    stringcopy(fs->volume_name, name, VFS_NAME_LENGTH);
+
+    /* TODO: Fill out volume name */
 
     fs->unmount = fat32_unmount;
     fs->open    = fat32_open;
@@ -93,6 +96,24 @@ fs_t * fat32_init(gbd_t *disk) {
     fs->write   = fat32_write;
     fs->getfree  = fat32_getfree;
 
-    return fs;
+    return NULL;
 }
 
+/*
+int fat32_unmount(fs_t *fs)
+{return 0;}
+int fat32_open(fs_t *fs, char *filename)
+{return 0;}
+int fat32_close(fs_t *fs, int fileid)
+{return 0;}
+int fat32_create(fs_t *fs, char *filename, int size)
+{return 0;}
+int fat32_remove(fs_t *fs, char *filename)
+{return 0;}
+int fat32_read(fs_t *fs, int fileid, void *buffer, int bufsize, int offset)
+{return 0;}
+int fat32_write(fs_t *fs, int fileid, void *buffer, int datasize, int offset)
+{return 0;}
+int fat32_getfree(fs_t *fs)
+{return 0;}
+*/
