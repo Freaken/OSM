@@ -42,6 +42,7 @@
 
 static filesystems_t filesystems[] = {
     {"TFS", &tfs_init},
+    {"FAT32", &fat32_init},
     { NULL, NULL} /* Last entry must be a NULL pair. */ 
 };
 
