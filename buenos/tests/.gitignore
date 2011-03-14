@@ -1,5 +1,6 @@
 halt
 print
+file
 spawn
 fork
 *.map
