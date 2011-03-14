@@ -8,4 +8,20 @@
 
 \thispagestyle{empty}
 
+\section{Opgave 1}
+Som der også er beskrevet i opgaven består størstedelen af arbejdet i denne
+opgave i at finde de relevante funktioner i {\tt fs/vfs.c} og lave en
+viderestilling af dem i {\tt proc/syscall.c}. Det største problem i opgaven er
+således, hvordan man håndterer {\tt syscall\_read} og {\tt syscall\_write}, idet
+disse også skal kunne bruges til at læse fra {\tt STDIN} og skrive til {\tt
+STDOUT} og {\tt STDERR}. Måden vi har løst dette på, er ved at ændre i {\tt
+vfs\_open}, så den aldrig vil allokere filer i de første 3 positioner i dens
+filtabel.
+
+\section{Opgave 2}
+Det lykkedes os ikke at implementere hele denne opgave. Vi har implementeret
+{\tt fat32\_init} og {\tt fat32\_unmount}. Vi gik for sent i gang med opgaven og
+nåede ikke at sætte os godt nok ind i mappe-strukturen for FAT32 til at kunne
+skrive noget der kunne finde en vilkårlig fil.
+
 \end{document}
