@@ -44,8 +44,9 @@ struct fat32_BPP_struct {              /* Offset | Size */
     unsigned char  BS_Reserved1;       /*     65 |    1 */
     unsigned char  BS_BootSig;         /*     66 |    1 */
     unsigned int   BS_VolID;           /*     67 |    4 */
-    unsigned char  BS_VolLab[11];      /*     71 |   11 */
+    char  BS_VolLab[11];               /*     71 |   11 */
     unsigned char  BS_FilSysType[8];   /*     82 |    8 */
+    unsigned char  padding[2];         /* Combined size must be a multiple of four */
 } __attribute__((__packed__)); 
 
 typedef struct fat32_BPP_struct fat32_BPP_struct;
