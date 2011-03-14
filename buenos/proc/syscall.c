@@ -34,6 +34,7 @@
  *
  */
 #include "drivers/polltty.h"
+#include "fs/vfs.h"
 #include "kernel/assert.h"
 #include "kernel/cswitch.h"
 #include "kernel/halt.h"
@@ -52,24 +53,21 @@ int _syscall_write(context_t *user_context) {
     char *buffer = (char*) user_context->cpu_regs[MIPS_REGISTER_A2];
     int length = user_context->cpu_regs[MIPS_REGISTER_A3];
 
-    /* Current process and file handle */
-    process_table_t *process = process_get_current_process_entry();
-    gcd_t *file = &process->files[file_handle];
-
     /* Sanity checks */
-    if(file_handle < 0 || file_handle >= CONFIG_MAX_FILEHANDLES)
+    if(file_handle < 0 ||
+       file_handle == FILEHANDLE_STDIN ||
+       file_handle >= CONFIG_MAX_OPEN_FILES)
         return SYSCALL_ILLEGAL_ARGUMENT;
-
-    if(file->device == NULL)
-        return SYSCALL_NOT_OPEN;
-
-    if(file->write == NULL)
-        return SYSCALL_OPERATION_NOT_POSSIBLE;
 
     /* This function _should_ also test if buffer in a legal memory area */
 
-    /* DO IT! */
-    length = file->write(file, buffer, length);
+    if(file_handle == FILEHANDLE_STDOUT || file_handle == FILEHANDLE_STDERR)
+        /* If the output is STDOUT/STDERR, write to console */
+        length = tty_console->write(tty_console, buffer, length);    
+    else
+        /* Otherwise write using vfs - but we are using the first three numbers
+         * as magic values, hence the "-3" */
+        length = vfs_write(file_handle, buffer, length);
 
     return length;
 }
@@ -83,24 +81,22 @@ int _syscall_read(context_t *user_context) {
     char *buffer = (char*) user_context->cpu_regs[MIPS_REGISTER_A2];
     int length = user_context->cpu_regs[MIPS_REGISTER_A3];
 
-    /* Current process and file handle */
-    process_table_t *process = process_get_current_process_entry();
-    gcd_t *file = &process->files[file_handle];
-
     /* Sanity checks */
-    if(file_handle < 0 || file_handle >= CONFIG_MAX_FILEHANDLES)
+    if(file_handle < 0 ||
+       file_handle == FILEHANDLE_STDOUT ||
+       file_handle == FILEHANDLE_STDERR ||
+       file_handle >= CONFIG_MAX_OPEN_FILES)
         return SYSCALL_ILLEGAL_ARGUMENT;
-
-    if(file->device == NULL)
-        return SYSCALL_NOT_OPEN;
-
-    if(file->read == NULL)
-        return SYSCALL_OPERATION_NOT_POSSIBLE;
 
     /* This function _should_ also test if buffer in a legal memory area */
 
-    /* DO IT! */
-    length = file->read(file, buffer, length);
+    if(file_handle == FILEHANDLE_STDIN)
+        /* If the input is STDIN, write to console */
+        length = tty_console->read(tty_console, buffer, length);
+    else
+        /* Otherwise read using vfs - but we are using the first three numbers
+         * as magic values, hence the "-3" */
+        length = vfs_read(file_handle, buffer, length);
 
     return length;
 }
@@ -128,12 +124,38 @@ void syscall_handle(context_t *user_context)
         halt_kernel();
         break;
 
+    case SYSCALL_OPEN:
+        user_context->cpu_regs[MIPS_REGISTER_V0] = vfs_open(
+            (char*) user_context->cpu_regs[MIPS_REGISTER_A1]);
+        break;
+
+    case SYSCALL_CLOSE:
+        user_context->cpu_regs[MIPS_REGISTER_V0] = vfs_close(
+            user_context->cpu_regs[MIPS_REGISTER_A1]);
+        break;
+
+    case SYSCALL_SEEK:
+        user_context->cpu_regs[MIPS_REGISTER_V0] = vfs_seek(
+            user_context->cpu_regs[MIPS_REGISTER_A1],
+            user_context->cpu_regs[MIPS_REGISTER_A2]);
+
     case SYSCALL_READ:
         user_context->cpu_regs[MIPS_REGISTER_V0] = _syscall_read(user_context);
         break;
 
     case SYSCALL_WRITE:
         user_context->cpu_regs[MIPS_REGISTER_V0] = _syscall_write(user_context);
+        break;
+
+    case SYSCALL_CREATE:
+        user_context->cpu_regs[MIPS_REGISTER_V0] = vfs_create(
+            (char*) user_context->cpu_regs[MIPS_REGISTER_A1],
+            user_context->cpu_regs[MIPS_REGISTER_A2]);
+        break;
+
+    case SYSCALL_DELETE:
+        user_context->cpu_regs[MIPS_REGISTER_V0] = vfs_remove(
+            (char*) user_context->cpu_regs[MIPS_REGISTER_A1]);
         break;
 
     case SYSCALL_EXIT:
