@@ -3,6 +3,7 @@ print
 file
 spawn
 fork
+haircutter
 *.map
 *.o
 
