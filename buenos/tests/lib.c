@@ -650,6 +650,18 @@ int printf(const char *fmt, ...) {
     return written;
 }
 
+int pprintf(const char *fmt, ...) {
+    va_list ap;
+    int written;
+    char buffer[256];
+
+    va_start(ap, fmt);
+    written = vxnprintf(buffer, 256, fmt, ap, 0);
+    va_end(ap);
+    puts(buffer);
+    return written;
+}
+
 int snprintf(char *str, int size, const  char  *fmt, ...) {
     va_list ap;
     int written;

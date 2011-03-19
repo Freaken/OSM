@@ -130,6 +130,7 @@ ssize_t readline(char *s, size_t size);
 
 #ifdef PROVIDE_FORMATTED_OUTPUT
 int printf(const char *, ...);
+int pprintf(const char *, ...);
 int snprintf(char *, int, const char *, ...);
 #endif
 
