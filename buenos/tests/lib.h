@@ -93,6 +93,22 @@ int syscall_delete(const char *filename);
 int syscall_fork(void (*func)(int), int arg);
 void *syscall_memlimit(void *heap_end);
 
+/* User-space locks and conditions */
+typedef int64_t usr_lock_t;
+typedef int32_t usr_cond_t;
+
+/* Locks */
+int syscall_lock_create(usr_lock_t *lock);
+void syscall_lock_acquire(usr_lock_t *lock);
+void syscall_lock_release(usr_lock_t *lock);
+
+/* Condition variables */
+int syscall_condition_create(usr_cond_t *cond);
+void syscall_condition_wait(usr_cond_t *cond, usr_lock_t *lock);
+void syscall_condition_signal(usr_cond_t *cond);
+void syscall_condition_broadcast(usr_cond_t *cond);
+
+
 #ifdef PROVIDE_STRING_FUNCTIONS
 size_t strlen(const char *s);
 char *strcpy(char *dest, const char *src);
