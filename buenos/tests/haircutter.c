@@ -16,15 +16,26 @@ customer_t queue[QUEUE_LEN]; /* Circular buffer */
 int queue_start_pos; /* First element on queue */
 int queue_end_pos;   /* Last element on queue+1 */
 
-
+/* Gets an integer associated with each customer.
+ * With the current implementation it's a dummy
+ * function, that only casts customer_t to int.
+ */
 int get_customer_id(customer_t customer) {
     return (int) customer;
 }
 
+/* Gets an integer associated with each haircutter.
+ * With the current implementation it's a dummy
+ * function, that only casts customer_t to int.
+ */
 int get_haircutter_id(haircutter_t haircutter) {
     return (int) haircutter;
 }
 
+/* Main process for a customer.
+ * Adds itself to the customer-queue (unless it's full),
+ * then wakes the haircutters and exits.
+ */
 void customer(customer_t customer) {
     syscall_lock_acquire(&queue_lock);
 
@@ -47,6 +58,9 @@ void customer(customer_t customer) {
     syscall_exit(0);
 }
 
+/* Gets a customer from the queue, 
+ * or waits until there is one available.
+ */
 customer_t get_customer(haircutter_t haircutter) {
     /* Get lock and wait for customers */
     syscall_lock_acquire(&queue_lock);
@@ -66,6 +80,9 @@ customer_t get_customer(haircutter_t haircutter) {
     return customer;
 }
 
+/* Does that actual "cutting". Is given a haircutter to
+ * do the cutting and a customer to cut.
+ */
 void do_cutting(haircutter_t haircutter, customer_t customer) {
     pprintf("Haircutter %d is beginning to cut customer %d\n",
             get_haircutter_id(haircutter),
@@ -81,6 +98,10 @@ void do_cutting(haircutter_t haircutter, customer_t customer) {
 
 }
 
+/* Main haircutter function. Just an infite loop of
+ * getting customers then cutting them. What a dull
+ * life they have.
+ */
 void haircutter(haircutter_t haircutter) {
     while(1) {
         customer_t customer = get_customer(haircutter);
@@ -88,7 +109,9 @@ void haircutter(haircutter_t haircutter) {
     }
 }
 
-
+/* Main function.
+ * Spawns the haircutters then spawns the customers.
+ */
 int main(void) {
     int n;
 
@@ -101,7 +124,7 @@ int main(void) {
     syscall_fork(haircutter, 1);
     syscall_fork(haircutter, 2);
 
-    for(n = 0; n <= 6; n++)
+    for(n = 0; n <= 30; n++)
         syscall_fork(customer, n);
 
     return 0;
