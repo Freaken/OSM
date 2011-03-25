@@ -38,15 +38,38 @@
 #include "kernel/assert.h"
 #include "vm/tlb.h"
 #include "vm/pagetable.h"
+#include "kernel/thread.h"
 
 void tlb_modified_exception(void)
 {
-    KERNEL_PANIC("Unhandled TLB modified exception");
+
 }
 
 void tlb_load_exception(void)
 {
-    KERNEL_PANIC("Unhandled TLB load exception");
+    tlb_exception_state_t *state;
+    _tlb_get_exception_state(state);
+    thread_table_t *thread = thread_get_current_thread_entry();
+    uint32_t count = thread->pagetable->valid_count;
+
+    evenoddbit = (state->badvaddr >> 12) & 1;
+
+    int i;
+    while(count < 0) {
+        tlb_entry_t entry = thread->pagetable->entries[i];
+        int v_value = even_odd ? entry.V0 : entry.V1;
+        if(v_value || (entry.G0 && entry.G1)) {
+            count--;
+        }
+
+        if(v_value && entry.VPN2 == state->VPN2) {
+            
+        }
+
+        i++;
+
+    }
+
 }
 
 void tlb_store_exception(void)
