@@ -52,24 +52,31 @@ void tlb_load_exception(void)
     thread_table_t *thread = thread_get_current_thread_entry();
     uint32_t count = thread->pagetable->valid_count;
 
-    evenoddbit = (state->badvaddr >> 12) & 1;
+    /* Find 12th bit of virtual address, which determines if even or odd page is used */
+    int evenoddbit = (state->badvaddr >> 12) & 1;
 
     int i;
-    while(count < 0) {
+    while(count > 0) {
         tlb_entry_t entry = thread->pagetable->entries[i];
-        int v_value = even_odd ? entry.V0 : entry.V1;
-        if(v_value || (entry.G0 && entry.G1)) {
-            count--;
-        }
 
-        if(v_value && entry.VPN2 == state->VPN2) {
+        /* Check if access is legal */
+        if(!(entry.ASID == state->ASID || (entry.G0 && entry.G1))) {
             
         }
 
-        i++;
+        int v_value = evenoddbit ? entry.V0 : entry.V1;
+        if(v_value) {
+            count--;
 
+            if(entry.VPN2 == state->VPN2) {
+                _tlb_write_random(&entry);
+            }
+        }
+
+        i++;
     }
 
+    return 0;
 }
 
 void tlb_store_exception(void)
