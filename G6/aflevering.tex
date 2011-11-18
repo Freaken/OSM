@@ -1,0 +1,18 @@
+\include{preamble}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\thispagestyle{empty}
+
+\section{Opgave 1}
+Vi laver hver frisør og hver kunde som seperate processer. Ventekøen er lavet
+som en cirkulær buffer, hvor kunder bliver afvist hvis bufferen er fuld. Simulering af at klipningen tager tid er lavet med en busy-wait. Vi bruger kun en enkelt lås, nemlig hver gang der læses og skrives til køen med kunder.
+
+Det eneste sted vores løsning afviger fra den beskrevet i opgaveteksten er den detalje, at kunden altid går i køen først og derefter vækker frisøren, istedet for først at tjekke om nogle af frisørerne sover, da det i praksis giver samme resultat og er mere effektivt.
+
+
+\end{document}
